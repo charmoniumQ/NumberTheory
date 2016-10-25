@@ -36,11 +36,13 @@
 	(module+ test
 		(check-eqv? 1 ((rev-args -) 2 3)))
 
+	; '(a b c) -> '((0 a) (1 b) (2 c))
 	(define (enumerate lst) (zip (range 0 (length lst)) lst))
 	(module+ test (check-equal?
 		'((0 4) (1 7) (2 11))
 		(enumerate '(4 7 11))))
 
+	; Inverse of enumerate, given size
 	(define (unumerate lst n)
 		(map (lambda (i)
 			(let ([it (assq i lst)])
@@ -52,6 +54,7 @@
 		'(4 7 3 0 3 0)
 		(unumerate '((1 7) (4 3) (0 4) (2 3)) 6)))
 
+	; Inverse of enumerate without size
 	(define (unumerate* lst)
 		(if (null? lst)
 			'()
@@ -68,6 +71,7 @@
 	;; 	(filter-map (lambda (x) (if (even? x) x #f)) (rangei 0 10))
 	;; 	'(0 2 4 6 8 10)))
 
+
 	(define (nested-map f lst n)
 		(if (= n 1)
 			(map f lst)
@@ -77,9 +81,18 @@
 			'((2 4) (6 8) (10 12))))
 
 	(define (as-csv lst)
-	  (string-append (string-join (map (lambda (row) (string-join row ",") lst)) "\n") "\n"))
+		(string-append (string-join (map (lambda (row) (string-join row ",")) lst) "\n") "\n"))
 	(module+ test (check-equal?
 		(as-csv '(("a" "b") ("c" "d")))
 		"a,b\nc,d\n"))
+
+	; Apply f to x n times
+	(define (repeatedly f x n)
+		(if (= n 0)
+			x
+			(repeatedly f (f x) (- n 1))))
+	(module+ test (check-equal?
+		(+ 1 (* 3 10))
+		(repeatedly (lambda (n) (+ n 3)) 1 10)))
 
 	(provide join range rangei rev-args enumerate unumerate unumerate* nested-map as-csv))
