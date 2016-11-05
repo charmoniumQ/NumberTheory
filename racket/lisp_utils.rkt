@@ -86,6 +86,12 @@
 		(as-csv '(("a" "b") ("c" "d")))
 		"a,b\nc,d\n"))
 
+	(define (weird-mod n m)
+		(if (= m 0)
+			1
+			(let ([r (remainder n m)])
+				(if (= r 0) m r))))
+
 	; Apply f to x n times
 	(define (repeatedly f x n)
 		(if (= n 0)
@@ -95,4 +101,4 @@
 		(+ 1 (* 3 10))
 		(repeatedly (lambda (n) (+ n 3)) 1 10)))
 
-	(provide join range rangei rev-args enumerate unumerate unumerate* nested-map as-csv))
+	(provide join range rangei rev-args enumerate unumerate unumerate* nested-map weird-mod as-csv repeatedly))
