@@ -1,6 +1,5 @@
 (module lisp_utils racket/base
 	(require srfi/1)
-	(require srfi/13)
 	(require "racket_specific.rkt")
 	(module+ test (require rackunit))
 
@@ -86,6 +85,14 @@
 		(as-csv '(("a" "b") ("c" "d")))
 		"a,b\nc,d\n"))
 
+	(define (from-csv str)
+		(map
+			(lambda (row) (string-split row ","))
+			(string-split str "\n")))
+	(module+ test (check-equal?
+		'(("a" "b") ("c" "d"))
+		(from-csv "a,b\nc,d\n")))
+
 	(define (weird-mod n m)
 		(if (= m 0)
 			1
@@ -101,4 +108,4 @@
 		(+ 1 (* 3 10))
 		(repeatedly (lambda (n) (+ n 3)) 1 10)))
 
-	(provide join range rangei rev-args enumerate unumerate unumerate* nested-map weird-mod as-csv repeatedly))
+	(provide join range rangei rev-args enumerate unumerate unumerate* nested-map weird-mod as-csv from-csv repeatedly))

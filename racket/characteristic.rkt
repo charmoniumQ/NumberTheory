@@ -18,6 +18,13 @@
 		(if (infinitary-divides-pow? a b) (first-div a b) (first-non-div a b)))
 
 
+	;; (module+ main
+		;; (define sq-size 16)
+		;; (define text-size 8)
+		;; (define coloration 0.5)
+		;; (save-grid k-characteristic (lambda (val n level) #t) coloration 10 sq-size text-size "output/small1_triangle.png")
+		;; (save-grid k-characteristic (lambda (val n level) #t) coloration 30 sq-size text-size "output/small2_triangle.png"))
+
 	(module+ main
 		(define max-level 200)
 		(define sq-size 20)

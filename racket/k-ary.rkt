@@ -13,30 +13,39 @@
 				(= 0 (remainder n d))
 				(k-ary-coprime? d (/ n d) (- k 1)))))
 	(define (k-ary-divides-pow? a b k)
+		; f(a, b, k) := the runtime of this function
+		; f(a, b, k) = g(a, b, k-1)
 		(if (= k 0)
 			(<= a b)
 			(k-ary-coprime-pow? a (- b a) (- k 1))))
+			; g(a, b-a, k - 1) time
 
 	(define (k-ary-coprime? a b k) (= 1 (k-ary-gcd a b k)))
-	(define (k-ary-coprime-pow? a b k) (= 0 (k-ary-gcd-pow a b k)))
+	(define (k-ary-coprime-pow? a b k) (= 0 (k-ary-gcd-pow a b k))) ; g(a, b, k) time
 
 	(define (k-ary-gcd a b k)
 			(sorted-set-intersection-max
 				(k-ary-divisors a k)
 				(k-ary-divisors b k)))
 	(define (k-ary-gcd-pow a b k)
-			(sorted-set-intersection-max
-				(k-ary-divisors-pow a k)
-				(k-ary-divisors-pow b k)))
+			; g(a, b, k) := the runtime of this function
+			; g(a, b, k) = O(min(a, b) + h(k))
+			(sorted-set-intersection-max ; O(min(a, b))
+				(k-ary-divisors-pow a k) ; list of size a, takes h(a, k) time
+				(k-ary-divisors-pow b k))); list of size b, takes h(b, k) time
 
 	(define/memo (k-ary-divisors n k)
 		(filter
-			(curryr k-ary-divides? n k)
+			(curryr k-ary-divides? n k) ; 
 			(divisors n)))
 	(define/memo (k-ary-divisors-pow n k)
+		; h(n, k) := the runtime of this function
+		; h(n, k) = sum(0 <= i < n, f(i, n, k)) with a list of size n
 		(filter
-			(curryr k-ary-divides-pow? n k)
-			(rangei 0 n)))
+			(curryr k-ary-divides-pow? n k) ; f(k) time
+			(rangei 0 n))) ; n times
+
+	; f(a, b, k) = g(a, b, k-1) = O(min(a, b-a) + h(k)) = O(min(a, b-a) + n*f(k))
 
 	; k-ary-divides -> k-ary-coprime? -> k-ary-gcd -> k-ary-divisors ->
 	; -> k-ary-divides-n-with-k -> k-ary-divides (again, but with k := k - 1)

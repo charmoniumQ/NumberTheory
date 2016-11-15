@@ -3,7 +3,8 @@
 
 (module racket_specific racket/base
 	(require (only-in racket/base compose sort format even? log))
-	(require (only-in racket/math exact-round))
+	(require (only-in racket/string string-join string-split))
+	(require (only-in racket/math exact-round exact-floor))
 	(require (only-in racket/function curry curryr))
 	(require (only-in racket/list cartesian-product))
 	(require (only-in math/number-theory
@@ -20,4 +21,4 @@
 
 	; http://docs.racket-lang.org/guide/performance.html?q=modules#%28part._modules-performance%29
 
-	(provide compose sort format even? exact-round curry curryr cartesian-product divides? max-dividing-power prime-divisors prime-exponents factorize divisors divisor-sum totient check-true check-false check-equal? false?))
+	(provide compose sort format even? log string-join string-split exact-round exact-floor curry curryr cartesian-product divides? max-dividing-power prime-divisors prime-exponents factorize divisors divisor-sum totient check-true check-false check-equal? false?))
