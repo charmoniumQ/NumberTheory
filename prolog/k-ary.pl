@@ -1,3 +1,6 @@
+%% :- use_module(library(tabling)).
+%% :- table divisors/3
+
 % TODO: place cuts
 
 divides(A, C, 0) :- !, A =< C.

@@ -60,18 +60,17 @@
 	(module+ test (check-true (k-ary-divides? 12 60 1)))
 	(module+ test (check-equal? '(0 2 8 10) (k-ary-divisors-pow 10 5)))
 
-	(module+ test (time (begin
+	(module+ main
 		(map
-			(lambda (k) (map
-				(lambda (n) (k-ary-divisors n k))
-			(rangei 1 1000)))
-		(rangei 0 20)) (void))))
-	(module+ test (time (begin
-		(map
-			(lambda (k) (map
-				(lambda (n) (k-ary-divisors-pow n k))
-			(rangei 0 10)))
-		(rangei 0 20)) (void))))
+			(lambda (a) (time (begin (map
+				(lambda (k) (map
+					(lambda (n) (k-ary-divisors-pow n k))
+					(rangei 0 300)))
+				(rangei 0 100)) (void))))
+			(rangei 0 3)))
+					   
+	; cpu time: 21176 real time: 21236 gc time: 1363
+
 
 	(define (infinitary-divides-pow? a b)
 	  (if (= b 0) (= a 0)
