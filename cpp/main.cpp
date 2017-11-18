@@ -17,11 +17,12 @@ void calculate (int rows);
 bool kDivides(int b, int a, int k);
 bool order(int, int);
 void printTriangle(int rows);
+void printMobius(int rows);
 
 int main ()
 {
    calculate(256);
-   printTriangle(256);
+   printMobius(10);
    return 0;
 }
 
@@ -111,4 +112,24 @@ void printTriangle (int rows)
       fout << endl;
    }
    fout.close();
+}
+
+void printMobius(int maxk) {
+  ofstream fout("results.txt");
+  for (int k = 0; k <= maxk; ++k) {
+	int* kmobius = new int[maxk+1]();
+	kmobius[0] = 1;
+	fout << kmobius[0] << ",";
+	for (int n = 1; n <= maxk; ++n) {
+	  int sum = 0;
+	  for (int i = 0; i < n; ++i) {
+		if (kDivides(i, n, k)) {
+		  sum += kmobius[i];
+		}
+	  }
+	  kmobius[n] = -sum;
+	  fout << kmobius[n] << ",";
+	}
+	fout << "\n";
+  }
 }
