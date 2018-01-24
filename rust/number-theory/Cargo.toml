@@ -5,3 +5,6 @@ authors = ["Sam Grayson <sam@samgrayson.me>"]
 
 [dependencies]
 #power-assert = "*"
+
+#[dev-dependencies]
+clippy = { version = "*" }
