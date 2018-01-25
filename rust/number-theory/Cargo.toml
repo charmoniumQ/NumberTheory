@@ -4,7 +4,6 @@ version = "0.1.0"
 authors = ["Sam Grayson <sam@samgrayson.me>"]
 
 [dependencies]
-#power-assert = "*"
-
-#[dev-dependencies]
-clippy = { version = "*" }
+clap = "2"
+clippy = { version = "*", optional = true }
+error-chain = "*"
