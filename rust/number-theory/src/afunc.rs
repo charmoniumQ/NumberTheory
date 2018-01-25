@@ -1,5 +1,6 @@
 use std::ops::Index;
 use std::ops::Range;
+use std::ops::RangeInclusive;
 use std::ops::RangeFrom;
 use std::ops::RangeTo;
 use std::vec::Vec;
@@ -8,6 +9,10 @@ use std::clone::Clone;
 use std::fmt::Debug;
 use std::fmt::Formatter;
 use std::convert::TryFrom;
+use std::convert::TryInto;
+use std::iter::Filter;
+use std::iter::Step;
+
 use std;
 
 error_chain! { }
@@ -42,7 +47,7 @@ impl<T: PartialOrd> Index<RangeTo<usize>> for SortedVec<T> {
     fn index(&self, index: RangeTo<usize>) -> &[T] { self.data.index(index) }
 }
 
-fn is_sorted<T: PartialOrd + Debug>(vec: &[T]) -> bool {
+fn is_sorted<T: PartialOrd>(vec: &[T]) -> bool {
     if ! vec.is_empty() {
         let mut last: &T = &vec[0_usize];
         for elem in &vec[1_usize..] {
@@ -55,12 +60,45 @@ fn is_sorted<T: PartialOrd + Debug>(vec: &[T]) -> bool {
     true
 }
 
-impl<T: PartialOrd + Debug> SortedVec<T> {
-    pub fn new(source: Vec<T>) -> Result<SortedVec<T>, > {
+impl<T: PartialOrd> TryFrom<Vec<T>> for SortedVec<T> {
+    type Error = Error;
+    fn try_from(source: Vec<T>) -> Result<SortedVec<T>> {
         if is_sorted(&source) {
             Ok(SortedVec::<T> {data: source})
         } else {
             Err("Not sorted".into())
+        }
+    }
+}
+impl<T: Step> From<RangeInclusive<T>> for SortedVec<T> {
+    fn from(source: RangeInclusive<T>) -> SortedVec<T> {
+        SortedVec::<T> {data: source.collect()}
+    }
+}
+impl<T: Step, P: FnMut(&T) -> bool> From<Filter<RangeInclusive<T>, P>> for SortedVec<T> {
+    fn from(source: Filter<RangeInclusive<T>, P>) -> SortedVec<T> {
+        SortedVec::<T> {data: source.collect()}
+    }
+}
+
+impl<T: PartialOrd> SortedVec<T> {
+    pub fn new() -> SortedVec<T> {
+        SortedVec::<T> {data: Vec::<T>::new()}
+    }
+
+    pub fn append(&mut self, elem: T) {
+        if self.data[self.data.len() - 1] < elem{
+            self.data.push(elem);
+        } else {
+            panic!("Not sorted");
+        }
+    }
+
+    pub fn prepend(&mut self, elem: T) {
+        if elem < self.data[self.data.len() - 1] {
+            self.data.insert(0, elem);
+        } else {
+            panic!("Not sorted");
         }
     }
 
@@ -86,39 +124,53 @@ impl<T: PartialOrd + Debug> SortedVec<T> {
     }
 }
 
-pub fn intersection<T: PartialOrd + Debug + Clone>(a_vec: &SortedVec<T>, b_vec: &SortedVec<T>) -> SortedVec<T> {
-    let mut ret = Vec::<T>::new();
+pub fn intersection<T: PartialOrd + Clone>(a_vec: &SortedVec<T>, b_vec: &SortedVec<T>) -> SortedVec<T> {
+    let mut ret = SortedVec::<T>::new();
     let mut a_iter = a_vec.iter(); let mut b_iter = b_vec.iter();
-    let mut a_elem = a_iter.next(); let mut b_elem = b_iter.next();
-    while a_elem.is_some() && b_elem.is_some() {
-        if a_elem > b_elem {
-            b_elem = b_iter.next();
-        } else if a_elem < b_elem {
-            a_elem = a_iter.next();
+    let mut a_result = a_iter.next(); let mut b_result = b_iter.next();
+    loop {
+        if let Some(a_elem) = a_result {
+            if let Some(b_elem) = b_result {
+                if a_elem > b_elem {
+                    b_result = b_iter.next();
+                } else if a_elem < b_elem {
+                    a_result = a_iter.next();
+                } else {
+                    ret.append(a_elem.clone());
+                    a_result = a_iter.next();
+                    b_result = b_iter.next();
+                }
+            } else {
+                break
+            }
         } else {
-            ret.push(a_elem.unwrap().clone());
-            a_elem = a_iter.next();
-            b_elem = b_iter.next();
+            break
         }
     }
-    // ret is sorted so unwrapping succeeds
-    SortedVec::<T>::new(ret).unwrap() // TODO: build this as a vec
+    ret.into()
 }
 
-pub fn is_intersection_empty<T: PartialOrd + Debug>(a_vec: &SortedVec<T>, b_vec: &SortedVec<T>) -> bool {
+pub fn is_intersection_empty<T: PartialOrd>(a_vec: &SortedVec<T>, b_vec: &SortedVec<T>) -> bool {
     let mut a_iter = a_vec.iter(); let mut b_iter = b_vec.iter();
     a_iter.next(); b_iter.next(); // TODO: do this differently
-    let mut a_elem = a_iter.next(); let mut b_elem = b_iter.next();
-    while a_elem.is_some() && b_elem.is_some() {
-        if a_elem > b_elem {
-            b_elem = b_iter.next();
-        } else if a_elem < b_elem {
-            a_elem = a_iter.next();
+    let mut a_result = a_iter.next(); let mut b_result = b_iter.next();
+    loop {
+        if let Some(a_elem) = a_result {
+            if let Some(b_elem) = b_result {
+                if a_elem > b_elem {
+                    b_result = b_iter.next();
+                } else if a_elem < b_elem {
+                    a_result = a_iter.next();
+                } else {
+                    return false;
+                }
+            } else {
+                return true;
+            }
         } else {
-            return false;
+            return true;
         }
     }
-    true
 }
 
 pub struct AFunc {
@@ -127,22 +179,27 @@ pub struct AFunc {
 
 fn valid_afunc(divisorss: &[SortedVec<usize>]) -> bool {
     divisorss.iter().enumerate().all(|(n, divisors)| {
-        if ! divisors.is_empty() {
-            // since divisors is not empty, unwrapping succeeds
-            *divisors.max().unwrap() <= n
-        } else {
-            true
+        divisors[0] == 0 && match divisors.max() {
+            Some(k) => *k <= n,
+            None => true
         }
     })
 }
 
-impl AFunc {
-    pub fn new(divisorss: Vec<SortedVec<usize>>) -> Result<AFunc> {
+impl TryFrom<Vec<SortedVec<usize>>> for AFunc {
+    type Error = Error;
+    fn try_from(divisorss: Vec<SortedVec<usize>>) -> Result<AFunc> {
         if valid_afunc(&divisorss) {
             Ok(AFunc {divisorss: divisorss})
         } else {
             Err("Not valid A-function".into())
         }
+    }
+}
+
+impl AFunc {
+    pub fn new() -> AFunc {
+        AFunc {divisorss: Vec::<SortedVec<usize>>::new()}
     }
 
     pub fn divides(&self, d: usize, n: usize) -> bool {
@@ -150,11 +207,11 @@ impl AFunc {
     }
 
     pub fn d(n: usize) -> AFunc {
-        AFunc::new((0..n).map(|i| {
-            // since the vector is sorted, unwrapping succeeds
-            SortedVec::<usize>::new((0..=i).collect()).unwrap()
-        }).collect()).unwrap()
-        // since the divisor-sets are valid range, the unwrapping succeeds
+        (0..n).map(|i| {
+            (0..=i).into()
+        }).collect::<Vec<SortedVec<usize>>>().try_into().unwrap()
+        // since the ith divisor set is a subsequence of the range (0..=i),
+        // the unwrapping succeeds
     }
 
     pub fn gcd(&self, a: usize, b: usize) -> usize {
@@ -167,13 +224,12 @@ impl AFunc {
     }
 
     pub fn iterate(&self) -> AFunc {
-        AFunc::new((0..self.divisorss.len()).map(|n| {
-            // since the new vector is sorted, the unwrapping succeeds
-            SortedVec::<usize>::new((0..=n).filter(|d| {
+        (0..self.divisorss.len()).map(|n| -> SortedVec<usize> {
+            (0..=n).filter(|d| {
                 self.coprime(*d, n-*d)
-            }).collect()).unwrap()
-            // since the divisor-set is up to n, the unwrapping succeeds
-        }).collect()).unwrap()
+            }).into()
+            // since the nth divisor-set is up to n, the unwrapping succeeds
+        }).collect::<Vec<SortedVec<usize>>>().try_into().unwrap()
 
     }
 
@@ -196,27 +252,21 @@ impl AFunc {
             }
         }).collect()
     }
-}
 
-impl TryFrom<String> for AFunc {
-    type Error = Error;
-    fn try_from(value: String) -> Result<Self> {
-        Ok(AFunc::new(
-            value.lines().map(|line| -> Result<SortedVec<usize>> {
-                Ok(SortedVec::new(line.split(',').map(|num| -> Result<usize> {
-                    num.parse().chain_err(|| "can't parse num")
-                }).collect::<Result<Vec<usize>>>()?)?)
-            }).collect::<Result<Vec<SortedVec<usize>>>>()?
-        )?)
-    }
-}
 
-impl Into<String> for AFunc {
-    fn into(self) -> String {
-        self.divisorss.iter().map(|divisors| -> String {
-            divisors.iter().map(|divisor| -> String {
+    pub fn to_string(&self) -> String {
+        self.divisorss.iter().map(|divisors| {
+            divisors.iter().map(|divisor| {
                 divisor.to_string()
             }).collect::<Vec<String>>().join(",")
         }).collect::<Vec<String>>().join("\n")
+    }
+
+    pub fn from_string(value: &String) -> Result<Self> {
+        Ok(value.lines().map(|line| -> Result<SortedVec<usize>> {
+            Ok(line.split(',').map(|num| {
+                num.parse().chain_err(|| "can't parse num")
+            }).collect::<Result<Vec<usize>>>()?.try_into()?)
+        }).collect::<Result<Vec<SortedVec<usize>>>>()?.try_into()?)
     }
 }
