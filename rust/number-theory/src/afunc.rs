@@ -1,18 +1,13 @@
-use std::ops::Index;
-use std::ops::Range;
-use std::ops::RangeInclusive;
-use std::ops::RangeFrom;
-use std::ops::RangeTo;
+use std::ops::{Index, Range, RangeInclusive, RangeFrom, RangeTo};
 use std::vec::Vec;
 use std::slice::Iter;
 use std::clone::Clone;
-use std::fmt::Debug;
-use std::fmt::Formatter;
-use std::convert::TryFrom;
-use std::convert::TryInto;
-use std::iter::Filter;
-use std::iter::Step;
-
+use std::fmt::{Debug, Formatter};
+use std::convert::{TryFrom, TryInto};
+use std::iter::{Filter, Step};
+use std::path::Path;
+use image::{ImageBuffer, Rgb, RgbImage, Pixel};
+use core::ops::DerefMut;
 use std;
 
 error_chain! { }
@@ -81,6 +76,7 @@ impl<T: Step, P: FnMut(&T) -> bool> From<Filter<RangeInclusive<T>, P>> for Sorte
     }
 }
 
+#[allow(dead_code)]
 impl<T: PartialOrd> SortedVec<T> {
     pub fn new() -> SortedVec<T> {
         SortedVec::<T> {data: Vec::<T>::new()}
@@ -124,6 +120,7 @@ impl<T: PartialOrd> SortedVec<T> {
     }
 }
 
+#[allow(dead_code)]
 pub fn intersection<T: PartialOrd + Clone>(a_vec: &SortedVec<T>, b_vec: &SortedVec<T>) -> SortedVec<T> {
     let mut ret = SortedVec::<T>::new();
     let mut a_iter = a_vec.iter(); let mut b_iter = b_vec.iter();
@@ -197,14 +194,18 @@ impl TryFrom<Vec<SortedVec<usize>>> for AFunc {
     }
 }
 
+#[allow(dead_code)]
 impl AFunc {
-    pub fn new() -> AFunc {
-        AFunc {divisorss: Vec::<SortedVec<usize>>::new()}
-    }
-
     pub fn divides(&self, d: usize, n: usize) -> bool {
         self.divisorss[n].contains(&d)
     }
+
+    // pub fn map<B>(self, f: FnMut<SortedVec<usize> -> B>) -> Vec<B> {
+    //     let mut interm: Vec<Vec<SortedVec<usize>>> = Vec::new();
+    //     for i in 0..(self.divisorss.len() / 2 + 1) {
+    //         interm[i].push()
+    //     }
+    // }
 
     pub fn d(n: usize) -> AFunc {
         (0..n).map(|i| {
@@ -233,7 +234,27 @@ impl AFunc {
 
     }
 
-    pub fn plaintext(&self) -> Vec<String> {
+    pub fn to_string(&self) -> String {
+        self.divisorss.iter().map(|divisors| {
+            divisors.iter().map(|divisor| {
+                divisor.to_string()
+            }).collect::<Vec<String>>().join(",")
+        }).collect::<Vec<String>>().join("\n")
+    }
+
+    pub fn from_string(value: &String) -> Result<Self> {
+        Ok(value.lines().map(|line| -> Result<SortedVec<usize>> {
+            Ok(line.split(',').map(|num| {
+                num.parse().chain_err(|| "can't parse num")
+            }).collect::<Result<Vec<usize>>>()?.try_into()?)
+        }).collect::<Result<Vec<SortedVec<usize>>>>()?.try_into()?)
+    }
+
+    pub fn len(&self) -> usize {
+        self.divisorss.len()
+    }
+
+    pub fn draw_plaintext(&self) -> Vec<String> {
         self.divisorss.iter().enumerate().map(|(n, divisors)| {
             if ! divisors.is_empty() {
                 let mut iter = divisors.iter();
@@ -253,20 +274,46 @@ impl AFunc {
         }).collect()
     }
 
+    pub fn draw_image(&self, dest: &Path) {
+        let sq_size: u32 = 10;
+        let n_rows = self.len();
+        let n_cols = n_rows + 1;
 
-    pub fn to_string(&self) -> String {
-        self.divisorss.iter().map(|divisors| {
-            divisors.iter().map(|divisor| {
-                divisor.to_string()
-            }).collect::<Vec<String>>().join(",")
-        }).collect::<Vec<String>>().join("\n")
+        let mut image = RgbImage::new(n_cols as u32 * sq_size,
+                                      n_rows as u32 * sq_size);
+        for row in 0..n_rows {
+            for col in 0..=row {
+                let left = n_rows - row + 2*col;
+                let color = to_color(self.divides(col, row));
+                draw_rect(&mut image, color,
+                          left as u32 * sq_size / 2,
+                          row as u32 * sq_size,
+                          sq_size, sq_size);
+            }
+        }
+
+        image.save(dest).unwrap();
     }
+}
 
-    pub fn from_string(value: &String) -> Result<Self> {
-        Ok(value.lines().map(|line| -> Result<SortedVec<usize>> {
-            Ok(line.split(',').map(|num| {
-                num.parse().chain_err(|| "can't parse num")
-            }).collect::<Result<Vec<usize>>>()?.try_into()?)
-        }).collect::<Result<Vec<SortedVec<usize>>>>()?.try_into()?)
+fn to_color(val: bool) -> Rgb<u8> {
+    if val {
+        Rgb{data: [255, 0, 0]}
+    } else {
+        Rgb{data: [0, 0, 255]}
+    }
+}
+
+fn draw_rect<P, C>(image: &mut ImageBuffer<P, C>, color: P,
+                   x: u32, y: u32, width: u32, height: u32)
+where
+    P: Pixel + 'static,
+    P::Subpixel: 'static,
+    C: DerefMut<Target = [P::Subpixel]>
+{
+    for i in x..(x+width) {
+        for j in y..(y+height) {
+            image.put_pixel(i, j, color);
+        }
     }
 }

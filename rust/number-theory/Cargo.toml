@@ -7,3 +7,5 @@ authors = ["Sam Grayson <sam@samgrayson.me>"]
 clap = "2"
 clippy = { version = "*", optional = true }
 error-chain = "*"
+image = "*"
+#rayon = "0.9"
