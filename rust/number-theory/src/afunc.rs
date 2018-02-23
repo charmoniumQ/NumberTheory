@@ -15,7 +15,7 @@ error_chain! { }
 pub struct SortedVec<T: PartialOrd> {
     // This struct 'inherits' from Vec, but hides some methods and adds some methods
     // Hidden methods are ones that might violate the "sorted-ness"
-    // Thus, this type is compile-time guarunteed to be sorted,
+    // Thus, objects of this type are compile-time guarunteed to be sorted,
     // following this pattern https://doc.rust-lang.org/book/second-edition/ch09-03-to-panic-or-not-to-panic.html#creating-custom-types-for-validation
     data: Vec<T>,
 }
@@ -215,6 +215,12 @@ impl AFunc {
         // the unwrapping succeeds
     }
 
+    // TODO: use Vaughn's algorithm here
+    pub fn kary(k: usize, size: usize) -> AFunc {
+        let div = AFunc::d(size);
+        div.iterate_m(k)
+    }
+
     pub fn gcd(&self, a: usize, b: usize) -> usize {
         // since the intersection contains at least 0, the unwrapping succeeds
         *intersection(&self.divisorss[a], &self.divisorss[b]).max().unwrap()
@@ -224,6 +230,15 @@ impl AFunc {
         is_intersection_empty(&self.divisorss[a], &self.divisorss[b])
     }
 
+    pub fn iterate_m(self, k: usize) -> AFunc {
+        // TODO: take only a reference to self
+        let mut div = self;
+        for _ in 0..k {
+            div = div.iterate();
+        }
+        div
+    }
+
     pub fn iterate(&self) -> AFunc {
         (0..self.divisorss.len()).map(|n| -> SortedVec<usize> {
             (0..=n).filter(|d| {
@@ -231,7 +246,6 @@ impl AFunc {
             }).into()
             // since the nth divisor-set is up to n, the unwrapping succeeds
         }).collect::<Vec<SortedVec<usize>>>().try_into().unwrap()
-
     }
 
     pub fn to_string(&self) -> String {
@@ -294,6 +308,26 @@ impl AFunc {
 
         image.save(dest).unwrap();
     }
+
+    pub fn mu(&self) -> Vec<i16> {
+        // k_mobius n k = 0 - (sum [k_mobius i k | i <- [0..n-1], k_divides i n k])
+        // TODO: find way to make fixed size vector
+        let mut ret: Vec<i16> = (0..self.len()).map(|_| { 0 }).collect();
+        if ! ret.is_empty() {
+            ret[0] = 1;
+            for n in 1..self.len() {
+                let val: i16 = (0..n).map(|i| -> i16 {
+                    if self.divides(i, n) {
+                        ret[i]
+                    } else {
+                        0
+                    }
+                }).sum();
+                ret[n] = -val;
+            }
+        }
+        ret
+    }
 }
 
 fn to_color(val: bool) -> Rgb<u8> {
@@ -317,3 +351,5 @@ where
         }
     }
 }
+
+// TODO: rethink the module division

@@ -14,12 +14,11 @@ extern crate core;
 //use std::path::Path;
 mod afunc;
 
-fn main2(k: usize, max: usize) {
-    let mut div = afunc::AFunc::d(max);
-    for _ in 0..k {
-        div = div.iterate();
-    }
-    println!("image");
+fn main2(k: usize, size: usize) {
+    let div = afunc::AFunc::kary(k, size);
+    println!("generated div");
+    let muf = div.mu();
+    println!("{:?}", muf)
     //div.draw_image(Path::new("test.png"));
 }
 
