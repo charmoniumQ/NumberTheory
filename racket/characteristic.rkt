@@ -26,12 +26,12 @@
 		;; (save-grid k-characteristic (lambda (val n level) #t) coloration 30 sq-size text-size "output/small2_triangle.png"))
 
 	(module+ main
-		(define max-level 200)
-		(define sq-size 20)
-		(define text-size 8)
+		(define max-level 250)
+		(define sq-size 4)
+		(define text-size 0)
 		(define coloration 0.5)
-		(save-grid k-characteristic (lambda (val n level) (odd? val) ) coloration max-level sq-size text-size "output/triangle_odd.png")
-		(save-grid k-characteristic (lambda (val n level) (even? val)) coloration max-level sq-size text-size "output/triangle_even.png")
+		;; (save-grid k-characteristic (lambda (val n level) (odd? val) ) coloration max-level sq-size text-size "output/triangle_odd.png")
+		;; (save-grid k-characteristic (lambda (val n level) (even? val)) coloration max-level sq-size text-size "output/triangle_even.png")
 		(save-grid k-characteristic (lambda (val n level) #t         ) coloration max-level sq-size text-size "output/triangle.png")
 		(display-to-file (as-csv
 			(map

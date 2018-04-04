@@ -17,12 +17,12 @@
 			(let* (
 				[val (f n level)]
 				[color (get-color val e max-level)]
-				[text-contents (text (format "~a" val) text-size (viridis-foreground (stretch val e max-level)))]
 				[rect-contents (rectangle sq-size sq-size "solid" color)])
 				(if (render? val n level)
 					(if (eq? text-size 0)
 						rect-contents
-						(overlay text-contents rect-contents))
+						(let ([text-contents (text (format "~a" val) text-size (viridis-foreground (stretch val e max-level)))])
+						  (overlay text-contents rect-contents)))
 					(rectangle sq-size sq-size "solid" "white"))))
 
 	(define (make-row f render? e max-level sq-size text-size level)
