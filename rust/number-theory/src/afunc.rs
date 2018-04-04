@@ -8,6 +8,7 @@ use std::iter::{Filter, Step};
 use std::path::Path;
 use image::{ImageBuffer, Rgb, RgbImage, Pixel};
 use core::ops::DerefMut;
+use std::cmp::min;
 use std;
 
 error_chain! { }
@@ -176,6 +177,10 @@ pub struct AFunc {
 
 fn valid_afunc(divisorss: &[SortedVec<usize>]) -> bool {
     divisorss.iter().enumerate().all(|(n, divisors)| {
+        if divisors.len() == 0 {
+            println!("{:?}", divisors);
+            return false;
+        }
         divisors[0] == 0 && match divisors.max() {
             Some(k) => *k <= n,
             None => true
@@ -200,6 +205,7 @@ impl AFunc {
         self.divisorss[n].contains(&d)
     }
 
+    // TODO: multiprocessed map
     // pub fn map<B>(self, f: FnMut<SortedVec<usize> -> B>) -> Vec<B> {
     //     let mut interm: Vec<Vec<SortedVec<usize>>> = Vec::new();
     //     for i in 0..(self.divisorss.len() / 2 + 1) {
@@ -213,6 +219,7 @@ impl AFunc {
         }).collect::<Vec<SortedVec<usize>>>().try_into().unwrap()
         // since the ith divisor set is a subsequence of the range (0..=i),
         // the unwrapping succeeds
+        // TODO: filtering on a range always works
     }
 
     // TODO: use Vaughn's algorithm here
@@ -220,6 +227,7 @@ impl AFunc {
         let div = AFunc::d(size);
         div.iterate_m(k)
     }
+
 
     pub fn gcd(&self, a: usize, b: usize) -> usize {
         // since the intersection contains at least 0, the unwrapping succeeds
@@ -289,7 +297,7 @@ impl AFunc {
     }
 
     pub fn draw_image(&self, dest: &Path) {
-        let sq_size: u32 = 10;
+        let sq_size: u32 = 2;
         let n_rows = self.len();
         let n_cols = n_rows + 1;
 
@@ -305,7 +313,6 @@ impl AFunc {
                           sq_size, sq_size);
             }
         }
-
         image.save(dest).unwrap();
     }
 
@@ -349,6 +356,137 @@ where
         for j in y..(y+height) {
             image.put_pixel(i, j, color);
         }
+    }
+}
+
+pub struct CharTri {
+    elems: Vec<Vec<usize>>,
+}
+
+fn valid_chartri(elems: &Vec<Vec<usize>>) -> bool {
+    for i in 0..elems.len() {
+        if elems[i].len() != i+1 {
+            return false
+        } else {
+            // we know elems[i].len() > 0, so unwrapping succeeds
+            if i != 0 && *elems[i].iter().max().unwrap() > i {
+                return false
+            }
+        }
+    }
+    return true
+}
+
+impl TryFrom<Vec<Vec<usize>>> for CharTri {
+    type Error = Error;
+    fn try_from(elems: Vec<Vec<usize>>) -> Result<CharTri> {
+        if valid_chartri(&elems) {
+            Ok(CharTri {elems: elems})
+        } else {
+            Err("Not valid Characteristic Triangle".into())
+        }
+    }
+}
+
+impl CharTri {
+    pub fn kary(size: usize) -> CharTri{
+        // TODO: allocate the right size ahead of time
+        // TODO: allocate the right size ahead of time in other places too
+        let mut chartri: CharTri =
+            (0..size).map(|row| {
+                (0..=row).map(|_i| {
+                    0
+                }).collect()
+            }).collect::<Vec<Vec<usize>>>().try_into().unwrap();
+        // verify by hand that this satisfies valid_chartri, so unwrapping succeeds
+
+        if size != 0 {
+            chartri.elems[0][0] = 1
+        }
+
+        for b in 1..size {
+            chartri.elems[b][0] = 1;
+            chartri.elems[b][b] = 1;
+            for a in 1..b {
+                if a & b == a { // p^a infinitarily divides p^b, so m is odd
+                    let mut lb = 1;
+                    let mut ub = if b % 2 == 0 {
+                        b - 1
+                    } else {
+                        b
+                    };
+                    let mut m = 0;
+                    while lb != ub {
+                        m = (lb + ub + 2) / 4 * 2 - 1;
+                        if chartri.k_div(a, b, m) {
+                            ub = m;
+                        } else {
+                            lb = m + 2;
+                        }
+                    }
+                    chartri.elems[b][a] = lb;
+                } else {
+                    let mut lb = 2;
+                    let mut ub = if b % 2 == 1 {
+                        b - 1
+                    } else {
+                        b
+                    };
+                    let mut m = 0;
+                    while lb != ub {
+                        m = (lb + ub) / 4 * 2;
+                        if chartri.k_div(a, b, m) {
+                            lb = m + 2;
+                        } else {
+                            ub = m;
+                        }
+                    }
+                    chartri.elems[b][a] = lb;
+                }
+            }
+        }
+
+        if ! valid_chartri(&chartri.elems) {
+            panic!("not valid chartri");
+        }
+        // Our paper provides a proof of correctness of Vaughn's algorithm,
+        // which ensures invariant valid_chartri
+
+        chartri
+    }
+
+    fn k_div(&self, a: usize, b: usize, k: usize) -> bool {
+        if k == 0 {
+            return true
+        }
+        for i in 1..=min(a, b-a) {
+            if CharTri::order(self.elems[a  ][i], k-1) &&
+               CharTri::order(self.elems[b-a][i], k-1) {
+                return false
+            }
+        }
+        return true
+    }
+
+    fn order(k1: usize, k2: usize) -> bool {
+        if k1 % 2 == 0 {
+            k2 % 2 == 0 && k1 >  k2
+        } else {
+            k2 % 2 == 0 || k1 <= k2
+        }
+    }
+
+    pub fn afunc(&self, k: usize) -> AFunc {
+        // TODO: enumerate
+        (0..self.elems.len()).map(|row_n| -> SortedVec<usize> {
+            (0..=row_n).filter(|i| {
+                return self.k_div(*i, row_n, k)
+            }).try_into().unwrap()
+            // because this is a filtered sub-sequence of 0..=row_n,
+            // it is sorted and unwrapping succeeds
+        }).collect::<Vec<SortedVec<usize>>>().try_into().unwrap()
+        // unwrapping succeeds if SortedVec unwrapping succeeds and 
+        // it was a valid CharTri
     }
 }
 
