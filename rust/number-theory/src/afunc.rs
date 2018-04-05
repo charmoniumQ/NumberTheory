@@ -9,6 +9,8 @@ use std::path::Path;
 use image::{ImageBuffer, Rgb, RgbImage, Pixel};
 use core::ops::DerefMut;
 use std::cmp::min;
+use scarlet::colormap::{GradientColorMap, NormalizeMapping, ColorMap};
+use scarlet::color::RGBColor;
 use std;
 
 error_chain! { }
@@ -488,6 +490,63 @@ impl CharTri {
         // unwrapping succeeds if SortedVec unwrapping succeeds and 
         // it was a valid CharTri
     }
+
+    pub fn draw_image(&self, dest: &Path) {
+        let sq_size: u32 = 2;
+        let n_rows = self.elems.len();
+        let n_cols = n_rows + 1;
+
+        let mut image = RgbImage::new(n_cols as u32 * sq_size,
+                                      n_rows as u32 * sq_size);
+        for row in 0..n_rows {
+            for col in 0..=row {
+                let left = n_rows - row + 2*col;
+                let color = to_color2(self.elems[row][col], self.elems.len());
+                draw_rect(&mut image, color,
+                          left as u32 * sq_size / 2,
+                          row as u32 * sq_size,
+                          sq_size, sq_size);
+            }
+        }
+        let width = 10_u32;
+        for i in 0..(n_rows / 10) {
+            for j in 0..width {
+                let color = to_color2(i * 10, self.elems.len());
+                image.put_pixel(i as u32, j as u32, color);
+            }
+        }
+        for i in 0..(n_rows / 10) {
+            for j in 0..width {
+                let color = to_color2(i * 10+1, self.elems.len());
+                image.put_pixel(i as u32, width + 4 + j as u32, color);
+            }
+        }
+        image.save(dest).unwrap();
+    }
 }
 
-// TODO: rethink the module division
+fn norm(v: f64) -> f64 { v.powf(0.7_f64) }
+
+fn to_color2(val: usize, max: usize) -> Rgb<u8> {
+    let odd_color = GradientColorMap::<RGBColor> {
+        start: RGBColor::from_hex_code("#FFD915").unwrap(),
+        end  : RGBColor::from_hex_code("#FF0D10").unwrap(),
+        normalization: NormalizeMapping::Generic(norm),
+        padding: (0_f64, 1_f64),
+    };
+    let even_color = GradientColorMap::<RGBColor> {
+        start: RGBColor::from_hex_code("#12FFD0").unwrap(),
+        end  : RGBColor::from_hex_code("#4E15FF").unwrap(),
+        normalization: NormalizeMapping::Generic(norm),
+        padding: (0_f64, 1_f64),
+    };
+    let color =  if val % 2 == 0 {
+        // as f64
+        even_color.transform_single((val as f64) / (max as f64))
+    } else {
+        odd_color .transform_single((val as f64) / (max as f64))
+    };
+    Rgb {data: [color.int_r(), color.int_g(), color.int_b()]}
+}
+
+// TODO: rethink the module subdivision

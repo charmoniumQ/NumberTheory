@@ -9,3 +9,6 @@ clippy = { version = "*", optional = true }
 error-chain = "*"
 image = "*"
 #rayon = "0.9"
+scarlet = "0.2.2"
+
+# -C target-cpu=native -C lto -C opt-level=3
