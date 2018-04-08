@@ -6,9 +6,10 @@ authors = ["Sam Grayson <sam@samgrayson.me>"]
 [dependencies]
 clap = "2"
 clippy = { version = "*", optional = true }
-error-chain = "*"
-image = "*"
-#rayon = "0.9"
+error-chain = "0.11"
+image = "0.18"
 scarlet = "0.2.2"
+rayon = "0.9"
+time = "0.1"
 
 # -C target-cpu=native -C lto -C opt-level=3
